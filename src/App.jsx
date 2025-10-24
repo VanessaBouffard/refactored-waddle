@@ -421,6 +421,14 @@ if (campaign) {
     }
   }
 }
+<div>
+  <Label>URL CSV public (Google Sheet → Publier sur le Web → CSV)</Label>
+  <Input value={c.syncCsvUrl} onChange={e=>onChange({syncCsvUrl: e.target.value})} placeholder="https://docs.google.com/spreadsheets/.../pub?gid=0&single=true&output=csv" />
+  <div className="mt-2">
+    <Button className="bg-emerald-600 text-white" onClick={()=>importFromCsvForCampaign(c)}>Synchroniser cette campagne</Button>
+  </div>
+  <p className="text-xs text-gray-500 mt-1">Colle l’URL publiée en CSV de la feuille qui reçoit les réponses.</p>
+</div>
 
   const [score, setScore] = useState(null);
   const [comment, setComment] = useState("");
