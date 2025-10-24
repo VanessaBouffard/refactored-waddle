@@ -66,8 +66,8 @@ const DEFAULT_CAMPAIGN = () => ({
   accentHex: "#2563eb", // Tailwind blue-600
   thankYou: "Merci pour ton avis!",
   promoterUrl: "http://www.linkedin.com/in/vanessa-bouffard-938825252", // à personnaliser
-  passiveUrl: "https://docs.google.com/forms/d/e/1FAIpQLSd_PxfXSxv1LVQ5H7m3VyH6kljuPhn4NmBbaWbbuCegCjopQg/viewform?usp=sharing&ouid=104377489573002155425",
-  detractorUrl: "https://docs.google.com/forms/d/e/1FAIpQLScMPaLSXEQ1xrLWX_FExeAfCZmoBRIkdujR-500U0m5t5uy6A/viewform?usp=sharing&ouid=104377489573002155425",
+  passiveUrl: "https://docs.google.com/forms/d/e/1FAIpQLSd_PxfXSxv1LVQ5H7m3VyH6kljuPhn4NmBbaWbbuCegCjopQg/viewform",
+  detractorUrl: "https://docs.google.com/forms/d/e/1FAIpQLScMPaLSXEQ1xrLWX_FExeAfCZmoBRIkdujR-500U0m5t5uy6A/viewform",
   webhookUrl: "", // ex. Apps Script URL
   isActive: true,
 });
