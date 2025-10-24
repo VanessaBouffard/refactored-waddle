@@ -228,7 +228,7 @@ function Dashboard({ campaigns, setCampaigns, responses }) {
       <section className="grid gap-6">
         {campaigns.map(c => (
           <Card key={c.id}>
-            <CampaignEditor c={c} onChange={(patch)=>updateCampaign(c.id, patch)} onRemove={()=>removeCampaign(c.id)} />
+            <CampaignEditor   c={c}   onChange={(patch)=>updateCampaign(c.id, patch)}   onRemove={()=>removeCampaign(c.id)}   onSync={()=>importFromCsvForCampaign(c)} />
           </Card>
         ))}
         {campaigns.length === 0 && (
@@ -282,7 +282,7 @@ async function importFromCsvForCampaign(c) {
     for (const c of active) total += await importFromCsvForCampaign(c);
     alert(`Synchronisation terminée. Lignes importées: ${total}`);
   }
-function CampaignEditor({ c, onChange, onRemove }){
+function CampaignEditor({ c, onChange, onRemove, onSync }){
   const baseUrl = `${window.location.origin}${window.location.pathname}#/survey/${c.id}`;
   const portableParams = encodeURIComponent(JSON.stringify({
     brandName: c.brandName,
@@ -423,11 +423,19 @@ if (campaign) {
 }
 <div>
   <Label>URL CSV public (Google Sheet → Publier sur le Web → CSV)</Label>
-  <Input value={c.syncCsvUrl} onChange={e=>onChange({syncCsvUrl: e.target.value})} placeholder="https://docs.google.com/spreadsheets/.../pub?gid=0&single=true&output=csv" />
+  <Input
+    value={c.syncCsvUrl || ""}
+    onChange={e=>onChange({syncCsvUrl: e.target.value})}
+    placeholder="https://docs.google.com/spreadsheets/.../pub?gid=0&single=true&output=csv"
+  />
   <div className="mt-2">
-    <Button className="bg-emerald-600 text-white" onClick={()=>importFromCsvForCampaign(c)}>Synchroniser cette campagne</Button>
+    <Button className="bg-emerald-600 text-white" onClick={onSync}>
+      Synchroniser cette campagne
+    </Button>
   </div>
-  <p className="text-xs text-gray-500 mt-1">Colle l’URL publiée en CSV de la feuille qui reçoit les réponses.</p>
+  <p className="text-xs text-gray-500 mt-1">
+    Colle l’URL publiée en CSV (Fichier → Publier sur le Web → Feuille → CSV). Clique “Synchroniser” pour importer les réponses externes dans le tableau de bord.
+  </p>
 </div>
 
   const [score, setScore] = useState(null);
@@ -576,7 +584,10 @@ export default function App(){
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-
+useEffect(() => {
+  setCampaigns(prev => prev.map(c => ({ ...c, syncCsvUrl: c.syncCsvUrl || "" })));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
   function onSubmitResponse(r){ setResponses(prev => [r, ...prev]); }
 
   const isSurvey = route.path.startsWith("survey/");
