@@ -62,3 +62,8 @@ const esc = (s) => (`${s ?? ""}`).replaceAll('"', '""');
 const lines = [headers.join(",")].concat(rows.map(r => headers.map(h => `"${esc(r[h])}"`).join(",")));
 return lines.join("\n");
 }
+function App() {
+  // ...
+}
+
+export default App;
