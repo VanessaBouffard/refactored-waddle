@@ -226,11 +226,17 @@ function Dashboard({ campaigns, setCampaigns, responses }) {
       </Card>
 
       <section className="grid gap-6">
-        {campaigns.map(c => (
-          <Card key={c.id}>
-            <CampaignEditor   c={c}   onChange={(patch)=>updateCampaign(c.id, patch)}   onRemove={()=>removeCampaign(c.id)}   onSync={()=>importFromCsvForCampaign(c)} />
-          </Card>
-        ))}
+       {campaigns.map(c => (
+  <Card key={c.id}>
+    <CampaignEditor
+      c={c}
+      onChange={(patch)=>updateCampaign(c.id, patch)}
+      onRemove={()=>removeCampaign(c.id)}
+      onSync={()=>importFromCsvForCampaign(c)}
+    />
+  </Card>
+))}
+
         {campaigns.length === 0 && (
           <Card>
             <p>Aucune campagne pour l’instant. Crée ta première 💡</p>
@@ -305,6 +311,7 @@ function CampaignEditor({ c, onChange, onRemove, onSync }){
             <Label>Nom de la campagne</Label>
             <Input value={c.name} onChange={e=>onChange({name: e.target.value})} />
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Audience</Label>
@@ -314,10 +321,11 @@ function CampaignEditor({ c, onChange, onRemove, onSync }){
               </select>
             </div>
             <div>
-              <Label>Marque (affiché.e)</Label>
+              <Label>Marque (affiché·e)</Label>
               <Input value={c.brandName} onChange={e=>onChange({brandName: e.target.value})} />
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Couleur d’accent (hex)</Label>
@@ -328,8 +336,9 @@ function CampaignEditor({ c, onChange, onRemove, onSync }){
               <Input value={c.thankYou} onChange={e=>onChange({thankYou: e.target.value})} />
             </div>
           </div>
+
           <div>
-            <Label>URL Promoteur·rice·s (9–10) – ex. Google Reviews</Label>
+            <Label>URL Promoteur·rice·s (9–10) – ex. Google Reviews / LinkedIn</Label>
             <Input value={c.promoterUrl} onChange={e=>onChange({promoterUrl: e.target.value})} placeholder="https://..." />
           </div>
           <div>
@@ -340,39 +349,58 @@ function CampaignEditor({ c, onChange, onRemove, onSync }){
             <Label>URL Détracteur·rice·s (0–6) – résolution</Label>
             <Input value={c.detractorUrl} onChange={e=>onChange({detractorUrl: e.target.value})} placeholder="https://..." />
           </div>
+
           <div>
             <Label>Webhook (optionnel) pour enregistrer la réponse</Label>
-            <Input value={c.webhookUrl} onChange={e=>onChange({webhookUrl: e.target.value})} placeholder="https://script.google.com/.../exec" />
-            <p className="text-xs text-gray-500 mt-1">Si rempli, chaque réponse est aussi POSTée en JSON (score, commentaire, campagne, paramètres d’URL...).</p>
+            <Input value={c.webhookUrl || ""} onChange={e=>onChange({webhookUrl: e.target.value})} placeholder="https://script.google.com/.../exec" />
+            <p className="text-xs text-gray-500 mt-1">Chaque réponse est POSTée en JSON si rempli.</p>
           </div>
+
+          {/* >>>>> ICI : le champ URL CSV public + bouton Sync */}
+          <div>
+            <Label>URL CSV public (Google Sheet → Publier sur le Web → CSV)</Label>
+            <Input
+              value={c.syncCsvUrl || ""}
+              onChange={e=>onChange({syncCsvUrl: e.target.value})}
+              placeholder="https://docs.google.com/spreadsheets/.../pub?gid=0&single=true&output=csv"
+            />
+            <div className="mt-2">
+              <Button className="bg-emerald-600 text-white" onClick={onSync}>
+                Synchroniser cette campagne
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Colle l’URL publiée en CSV de la feuille des réponses, puis clique “Synchroniser”.</p>
+          </div>
+          {/* <<<<< */}
+
           <div className="flex items-center justify-between mt-2 gap-2 flex-wrap">
             <Toggle checked={!!c.isActive} onChange={(v)=>onChange({isActive: v})} label="Campagne active"/>
             <div className="flex gap-2">
               <Button className="bg-gray-100" onClick={()=>navigator.clipboard.writeText(baseUrl)}>Copier lien</Button>
               <Button className="bg-black text-white" onClick={()=>window.open(baseUrl, "_blank")}>Ouvrir</Button>
-              <Button className="bg-emerald-600 text-white" onClick={()=>navigator.clipboard.writeText(portableUrl)}>Lien auto‑porté</Button>
+              <Button className="bg-emerald-600 text-white" onClick={()=>navigator.clipboard.writeText(portableUrl)}>Lien auto-porté</Button>
               <Button className="bg-red-50 text-red-700" onClick={onRemove}>Supprimer</Button>
             </div>
           </div>
+
           <div className="text-xs text-gray-500 space-y-1">
             <div>Standard: <span className="font-mono">{baseUrl}</span></div>
-            <div>Auto‑porté (à partager): <span className="font-mono break-all">{portableUrl}</span></div>
+            <div>Auto-porté (à partager): <span className="font-mono break-all">{portableUrl}</span></div>
           </div>
         </div>
       </div>
+
       <div>
         <h3 className="font-medium mb-2">Aperçu NPS & instructions</h3>
         <ul className="text-sm list-disc pl-5 space-y-2">
-          <li><strong>NOUVEAU :</strong> bouton « Lien auto‑porté » → intègre la config de campagne dans l’URL via <code>?c=...</code>.</li>
-          <li>Utilise ce lien pour partager à l’externe : il fonctionnera même si la campagne n’est pas présente dans le navigateur de la personne.</li>
-          <li>9–10 → Promoteur·rice (redirigé·e vers Avis Google), 7–8 → Passif·ve, 0–6 → Détracteur·rice.</li>
-          <li>NPS = %Promoteur·rice·s – %Détracteur·rice·s.</li>
+          <li>Utilise le lien auto-porté pour l’externe (contient la config + le webhook via <code>&w=</code>).</li>
+          <li>9–10 → Promoteur·rice, 7–8 → Passif·ve, 0–6 → Détracteur·rice.</li>
+          <li>Le bouton “Synchroniser” importe les réponses externes depuis ton Google Sheet (CSV public).</li>
         </ul>
       </div>
     </div>
   );
 }
-
 /*********************************
  * Page de sondage
  *********************************/
