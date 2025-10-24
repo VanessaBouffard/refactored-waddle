@@ -363,18 +363,40 @@ function Survey({ campaigns, onSubmitResponse }){
       } catch (e) { console.warn("Webhook error", e); }
     }
 
-    const s = Number(score);
-    let url = "";
-    if (s >= 9) url = campaign.promoterUrl; else if (s >= 7) url = campaign.passiveUrl; else url = campaign.detractorUrl;
-
-    if (url) {
-      const u = new URL(url, window.location.origin);
-      u.searchParams.set("score", String(s));
-      if (email) u.searchParams.set("email", email);
-      Object.entries(params).forEach(([k,v]) => { if (!u.searchParams.has(k)) u.searchParams.set(k, v); });
-      window.location.href = u.toString();
-    }
-  }
+ // 1) Choix de l'URL selon le score
++    const s = Number(score);
++    let url = "";
++    if (s >= 9) url = campaign.promoterUrl;
++    else if (s >= 7) url = campaign.passiveUrl;
++    else url = campaign.detractorUrl;
++
++    // 2) Normalisation: ajoute https:// si absent (ex: "www...")
++    const normalizeUrl = (u) => {
++      if (!u) return "";
++      return /^https?:\/\//i.test(u) ? u : `https://${u.replace(/^\/+/, "")}`;
++    };
++    url = normalizeUrl(url);
++
++    if (url) {
++      const isExternal = /^https?:\/\//i.test(url);
++      const u = isExternal ? new URL(url) : new URL(url, window.location.origin);
++
++      // 3) N’ajoute PAS tous les paramètres à l’aveugle :
++      //    - Ne jamais propager `c` vers les liens externes
++      //    - Option: forward uniquement certains paramètres utiles
++      if (email) u.searchParams.set("email", email);
++      const forwardKeys = new Set(["source","utm","utm_source","utm_medium","utm_campaign"]);
++      if (!isExternal) {
++        // Pour les pages internes uniquement, on peut propager quelques params
++        Object.entries(params).forEach(([k,v]) => {
++          if (!u.searchParams.has(k) && forwardKeys.has(k)) u.searchParams.set(k, v);
++        });
++        // (Facultatif) score en interne :
++        u.searchParams.set("score", String(s));
++      }
++
++      window.location.href = u.toString();
++    }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "#f8fafc" }}>
