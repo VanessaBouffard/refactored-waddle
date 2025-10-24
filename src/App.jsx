@@ -69,6 +69,7 @@ const DEFAULT_CAMPAIGN = () => ({
   passiveUrl: "https://docs.google.com/forms/d/e/1FAIpQLSd_PxfXSxv1LVQ5H7m3VyH6kljuPhn4NmBbaWbbuCegCjopQg/viewform",
   detractorUrl: "https://docs.google.com/forms/d/e/1FAIpQLScMPaLSXEQ1xrLWX_FExeAfCZmoBRIkdujR-500U0m5t5uy6A/viewform",
   webhookUrl: "", // ex. Apps Script URL
+  syncCsvUrl: "",            // https://docs.google.com/spreadsheets/d/e/2PACX-1vQ90IGtHaXmUM3B7s5r0hcXt6fJlS0vcOnYKJjmgvoITwUOMx91sn-g46TdsBV1zfq8_Hn6-C7AAadn/pub?gid=0&single=true&output=csv
   isActive: true,
 });
 
@@ -110,7 +111,51 @@ function Toggle({ checked, onChange, label }){
     </div>
   );
 }
+/*********************************
+ * Import CSV (Google Sheets publié)
+ *********************************/
+function csvParse(text) {
+  const rows = []; let i = 0, cell = '', row = [], inQuotes = false;
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') { if (text[i+1] === '"') { cell += '"'; i += 2; continue; } inQuotes = false; i++; continue; }
+      cell += ch; i++; continue;
+    } else {
+      if (ch === '"') { inQuotes = true; i++; continue; }
+      if (ch === ',') { row.push(cell); cell = ''; i++; continue; }
+      if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i+1] === '\n') i++; row.push(cell); rows.push(row); cell=''; row=[]; i++; continue; }
+      cell += ch; i++; continue;
+    }
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
 
+async function fetchSheetCsv(url) {
+  const res = await fetch(url);
+  const text = await res.text();
+  const rows = csvParse(text);
+  if (!rows.length) return [];
+  const headers = rows[0].map(h => h.trim());
+  return rows.slice(1).filter(r => r.length && r.join('').trim() !== '')
+    .map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])));
+}
+
+function mapCsvRowToResponse(row) {
+  const safeJSON = (s) => { try { return s ? JSON.parse(s) : {}; } catch { return {}; } };
+  const scoreNum = row.score === '' ? '' : Number(row.score);
+  return {
+    id: row.id || uid(),
+    tsISO: row.tsISO || new Date().toISOString(),
+    campaignId: row.campaignId || '',
+    score: scoreNum,
+    comment: row.comment || '',
+    email: row.email || '',
+    meta: safeJSON(row.meta || '{}'),
+    routeParams: safeJSON(row.routeParams || '{}'),
+  };
+}
 /*********************************
  * Dashboard
  *********************************/
@@ -158,6 +203,7 @@ function Dashboard({ campaigns, setCampaigns, responses }) {
         <div className="flex gap-2">
           <Button className="bg-black text-white" onClick={addCampaign}>+ Nouvelle campagne</Button>
           <Button className="bg-gray-100" onClick={exportCSV}>Exporter CSV</Button>
+          <Button className="bg-emerald-600 text-white" onClick={importAllCampaigns}>Synchroniser (Sheets)</Button>
         </div>
       </header>
 
@@ -194,7 +240,48 @@ function Dashboard({ campaigns, setCampaigns, responses }) {
     </div>
   );
 }
+async function importFromCsvForCampaign(c) {
+    if (!c.syncCsvUrl) return 0;
+    try {
+      const table = await fetchSheetCsv(c.syncCsvUrl);
+      const incoming = table
+        .map(mapCsvRowToResponse)
+        // on garde les lignes de cette campagne (ou vides si tu préfères accepter tout)
+        .filter(r => !c.id || r.campaignId === c.id || r.campaignId === '');
 
+      if (!incoming.length) return 0;
+
+      setResponses(prev => {
+        const byKey = new Map();
+        const keyOf = (r) => (r.id && String(r.id)) || `${r.tsISO}::${r.email}::${r.campaignId}`;
+        // existants
+        prev.forEach(r => byKey.set(keyOf(r), r));
+        // entrants
+        incoming.forEach(r => {
+          const k = keyOf(r);
+          if (!byKey.has(k)) byKey.set(k, r);
+        });
+        return Array.from(byKey.values())
+          .sort((a,b) => (b.tsISO || '').localeCompare(a.tsISO || ''));
+      });
+
+      return incoming.length;
+    } catch (e) {
+      console.warn('Sync CSV erreur pour campagne', c.name, e);
+      return 0;
+    }
+  }
+
+  async function importAllCampaigns() {
+    const active = campaigns.filter(c => c.syncCsvUrl);
+    if (!active.length) {
+      alert("Aucune campagne n’a d’URL CSV configurée.");
+      return;
+    }
+    let total = 0;
+    for (const c of active) total += await importFromCsvForCampaign(c);
+    alert(`Synchronisation terminée. Lignes importées: ${total}`);
+  }
 function CampaignEditor({ c, onChange, onRemove }){
   const baseUrl = `${window.location.origin}${window.location.pathname}#/survey/${c.id}`;
   const portableParams = encodeURIComponent(JSON.stringify({
