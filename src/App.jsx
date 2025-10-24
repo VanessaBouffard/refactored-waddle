@@ -207,7 +207,7 @@ function CampaignEditor({ c, onChange, onRemove }){
     webhookUrl: c.webhookUrl || "",
     isActive: c.isActive !== false,
   }));
-  const portableUrl = `${baseUrl}?c=${portableParams}`;
+  const portableUrl = `${baseUrl}?c=${portableParams}&w=${encodeURIComponent(c.webhookUrl || "")}`;
 
   return (
     <div className="grid md:grid-cols-2 gap-5">
@@ -318,6 +318,22 @@ function Survey({ campaigns, onSubmitResponse }){
       console.warn("Paramètre c invalide", e);
     }
   }
+  // PATCH: priorité du webhook (w => local => c)
+if (campaign) {
+  if (params.w) {
+    try {
+      campaign.webhookUrl = decodeURIComponent(params.w);
+    } catch {
+      campaign.webhookUrl = params.w; // au cas où déjà encodé proprement
+    }
+  } else {
+    // si pas de w, on essaie celui de la campagne locale (si elle existe)
+    const local = campaigns.find(cc => cc.id === campaignId);
+    if (local?.webhookUrl && !campaign.webhookUrl) {
+      campaign.webhookUrl = local.webhookUrl;
+    }
+  }
+}
 
   const [score, setScore] = useState(null);
   const [comment, setComment] = useState("");
